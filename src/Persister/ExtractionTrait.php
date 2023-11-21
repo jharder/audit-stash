@@ -45,9 +45,15 @@ trait ExtractionTrait
             $fields['display_value'] = $event->getDisplayValue();
         }
 
+        // By definition, a Create event has no original data, so we can set original to null.
+        // Likewise, a Delete event has no remaining data, so we can also set changed to null.
+        // In all other cases, both the original and changed data will be applied to the event.
         if ($event instanceof BaseEvent) {
-            $fields['original'] = $serialize ? $this->serialize($event->getOriginal()) : $event->getOriginal();
-            $fields['changed'] = $serialize ? $this->serialize($event->getChanged()) : $event->getChanged();
+            $_original = $serialize ? $this->serialize($event->getOriginal()) : $event->getOriginal();
+            $_changed = $serialize ? $this->serialize($event->getChanged()) : $event->getChanged();
+
+            $fields['original'] = $fields['type'] == 'create' ? null : $_original;
+            $fields['changed'] = $fields['type'] == 'delete' ? null : $_changed;
         }
 
         return $fields;
