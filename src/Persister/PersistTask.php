@@ -15,7 +15,7 @@ class PersistTask
     /**
      * The persister object to use.
      *
-     * @var PersisterInterface|null`
+     * @var PersisterInterface|null
      */
     protected ?PersisterInterface $persister;
 

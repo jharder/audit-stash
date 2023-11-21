@@ -148,4 +148,12 @@ trait BaseEventTrait
     {
         return $this->displayValue;
     }
+
+    /**
+     * @return string
+     */
+    public function setDisplayValue(string $displayValue): void
+    {
+        $this->displayValue = $displayValue;
+    }
 }

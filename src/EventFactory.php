@@ -36,14 +36,18 @@ class EventFactory
                 $data['primary_key'],
                 $data['source'],
                 $data['changed'],
-                $data['original']
+                $data['original'],
             );
         } else {
             $event = new $map[$data['type']](
                 $data['transaction'],
                 $data['primary_key'],
-                $data['source']
+                $data['source'],
             );
+        }
+
+        if (isset($data['display_value'])) {
+            $event->setDisplayValue($data['display_value']);
         }
 
         if (isset($data['parent_source'])) {

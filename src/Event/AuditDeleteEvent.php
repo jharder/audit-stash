@@ -66,4 +66,24 @@ class AuditDeleteEvent implements EventInterface
     {
         return 'delete';
     }
+
+    /**
+     * Returns the original data.
+     *
+     * @return array|null
+     */
+    public function getOriginal(): ?array
+    {
+        return $this->original;
+    }
+
+    /**
+     * Returns the changed data.
+     *
+     * @return array|null
+     */
+    public function getChanged(): ?array
+    {
+        return $this->changed;
+    }
 }

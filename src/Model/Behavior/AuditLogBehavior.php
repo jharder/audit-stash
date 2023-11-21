@@ -284,9 +284,7 @@ class AuditLogBehavior extends Behavior
         $displayValue = $entity->get($this->_table->getDisplayField());
 
         $this->setCommonConfig();
-
         $config = $this->_config;
-
         $original = $entity->getOriginalValues();
 
         foreach ($original as $originalKey => $originalValue) {
@@ -358,7 +356,5 @@ class AuditLogBehavior extends Behavior
         if (isset($commonBlacklist)) {
             $this->setConfig('blacklist', $commonBlacklist);
         }
-
-        // set other conifgs similar to the above if necessary
     }
 }
