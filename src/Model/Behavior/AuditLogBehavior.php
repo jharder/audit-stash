@@ -124,12 +124,13 @@ class AuditLogBehavior extends Behavior
         $original = $entity->extractOriginal(array_keys($changed));
         $properties = $this->getAssociationProperties(array_keys($options['associated']));
 
-        // get required associated data
+        // Get required associated data
         foreach ($properties as $property) {
-            if (in_array($property, array_keys($original)) && count($original[$property]) > 0
-                && $original[$property][0] instanceof \Cake\ORM\Entity) { // i.e. associted properies
+            if (in_array($property, array_keys($original))
+                && count($original[$property]) > 0
+                && $original[$property][0] instanceof \Cake\ORM\Entity) { // i.e. associated properies
+                
                 foreach ($original[$property] as $associatedKey => $associatedRow) {
-
                     if (!$associatedRow->isDirty()) {
                         $fieldToCompare = $config['unsetAssociatedEntityFieldsNotDirtyByFieldName'][$property] ?? null;
                         if (isset($fieldToCompare)) {
