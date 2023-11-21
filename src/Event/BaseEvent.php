@@ -43,6 +43,7 @@ abstract class BaseEvent implements EventInterface
         string $transactionId,
         mixed $id,
         string $source,
+        ?string $parentSource,
         ?array $changed,
         ?array $original,
         ?string $displayValue
@@ -50,6 +51,7 @@ abstract class BaseEvent implements EventInterface
         $this->transactionId = $transactionId;
         $this->id = $id;
         $this->source = $source;
+        $this->parentSource = $parentSource;
         $this->changed = $changed;
         $this->original = $original;
         $this->displayValue = $displayValue;

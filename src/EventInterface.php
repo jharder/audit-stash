@@ -75,4 +75,18 @@ interface EventInterface extends JsonSerializable, Serializable
      * @return string
      */
     public function getDisplayValue(): string;
+
+    /**
+     * Returns an array with the properties and their values before they got changed.
+     *
+     * @return array|null
+     */
+    public function getOriginal(): ?array;
+
+    /**
+     * Returns an array with the properties and their values as they were changed.
+     *
+     * @return array|null
+     */
+    public function getChanged(): ?array;
 }

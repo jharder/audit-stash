@@ -17,6 +17,20 @@ class AuditDeleteEvent implements EventInterface
     }
 
     /**
+     * The array of changed properties for the entity.
+     *
+     * @var array|null
+     */
+    protected ?array $changed;
+
+    /**
+     * The array of original properties before they got changed.
+     *
+     * @var array|null
+     */
+    protected ?array $original;
+
+    /**
      * Constructor.
      *
      * @param string $transactionId The global transaction id
@@ -30,13 +44,15 @@ class AuditDeleteEvent implements EventInterface
         string $transactionId,
         mixed $id,
         string $source,
-        ?string $parentSource = null,
+        ?string $parentSource,
+        ?array $original,
         ?string $displayValue
     ) {
         $this->transactionId = $transactionId;
         $this->id = $id;
         $this->source = $source;
         $this->parentSource = $parentSource;
+        $this->original = $original;
         $this->displayValue = $displayValue;
         $this->timestamp = (new DateTime())->format(DateTime::ATOM);
     }
