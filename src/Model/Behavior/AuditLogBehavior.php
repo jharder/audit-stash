@@ -161,7 +161,7 @@ class AuditLogBehavior extends Behavior
                 }
 
                 // todo: remove any blacklist columns from associated data
-                /*$sourceEntity = basename(
+                $sourceEntity = basename(
                     str_replace('\\', '/', $this->table()->getEntityClass())
                 );
 
@@ -174,7 +174,7 @@ class AuditLogBehavior extends Behavior
                             $original[$property][$associatedKey][$sourceEntity . '_id']
                         );
                     }
-                }*/
+                }
             }
         }
 
