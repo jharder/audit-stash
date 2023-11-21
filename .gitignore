@@ -27,3 +27,7 @@ ehthumbs.db
 Thumbs.db
 /.phpunit.cache/
 /tools/
+
+.buildpath
+.project
+.settings/*

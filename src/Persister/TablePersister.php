@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace AuditStash\Persister;
 
 use AuditStash\PersisterInterface;
+use Cake\Core\Configure;
 use Cake\Core\InstanceConfigTrait;
 use Cake\ORM\Locator\LocatorAwareTrait;
 use Cake\ORM\Table;
@@ -127,6 +128,25 @@ class TablePersister implements PersisterInterface
      * @var \Cake\ORM\Table|null
      */
     protected ?Table $_table = null;
+
+    /**
+     * @return void
+     */
+    public function __construct()
+    {
+        /*
+         * use this to always add some fields as a separate fields from the meta data fields.
+         * In the app.php ...
+         *
+         * 'AuditStash' => [
+                 'persister' => 'AuditStash\Persister\TablePersister',
+                 'extractMetaFields' => [
+                    'key_in_meta_data_array' => 'db_table_column_name',
+                 ],
+             ]
+         */
+        $this->setConfig('extractMetaFields', Configure::read('AuditStash.extractMetaFields') ?: false);
+    }
 
     /**
      * Returns the table to use for persisting logs.

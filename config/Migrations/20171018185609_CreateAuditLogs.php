@@ -37,12 +37,22 @@ class CreateAuditLogs extends AbstractMigration
                 'null' => true,
                 'signed' => false,
             ])
+            ->addColumn('display_value', 'string', [
+                'default' => null,
+                'limit' => 255,
+                'null' => true,
+            ])
             ->addColumn('source', 'string', [
                 'default' => null,
                 'limit' => 255,
                 'null' => false,
             ])
             ->addColumn('parent_source', 'string', [
+                'default' => null,
+                'limit' => 255,
+                'null' => true,
+            ])
+            ->addColumn('username', 'string', [
                 'default' => null,
                 'limit' => 255,
                 'null' => true,
@@ -84,12 +94,22 @@ class CreateAuditLogs extends AbstractMigration
             )
             ->addIndex(
                 [
+                    'display_value',
+                ]
+            )
+            ->addIndex(
+                [
                     'source',
                 ]
             )
             ->addIndex(
                 [
                     'parent_source',
+                ]
+            )
+            ->addIndex(
+                [
+                    'username',
                 ]
             )
             ->addIndex(

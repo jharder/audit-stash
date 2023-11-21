@@ -44,13 +44,15 @@ abstract class BaseEvent implements EventInterface
         mixed $id,
         string $source,
         ?array $changed,
-        ?array $original
+        ?array $original,
+        ?string $displayValue
     ) {
         $this->transactionId = $transactionId;
         $this->id = $id;
         $this->source = $source;
         $this->changed = $changed;
         $this->original = $original;
+        $this->displayValue = $displayValue;
         $this->timestamp = (new DateTime())->format(DateTime::ATOM);
     }
 

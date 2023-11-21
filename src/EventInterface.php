@@ -40,6 +40,13 @@ interface EventInterface extends JsonSerializable, Serializable
     public function getSourceName(): string;
 
     /**
+     * Returns the parent repository name in which the entity's parent is.
+     *
+     * @return string
+     */
+    public function getParentSourceName(): ?string;
+
+    /**
      * Returns the time string in which this change happened.
      *
      * @return string
@@ -60,4 +67,12 @@ interface EventInterface extends JsonSerializable, Serializable
      * @return void
      */
     public function setMetaInfo(array $meta): void;
+
+    /**
+     * Returns the display field value.
+     * The display field is set via the Model.setDisplayField($fieldName) property
+     *
+     * @return string
+     */
+    public function getDisplayValue(): string;
 }

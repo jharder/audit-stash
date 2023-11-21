@@ -11,7 +11,7 @@ use AuditStash\Persister\ElasticSearchPersister;
 use AuditStash\PersisterInterface;
 use Cake\Core\Configure;
 use Cake\Datasource\EntityInterface;
-use Cake\Event\Event;
+use Cake\Event\EventInterface;
 use Cake\ORM\Behavior;
 use Cake\Utility\Inflector;
 use Cake\Utility\Text;
@@ -32,8 +32,10 @@ class AuditLogBehavior extends Behavior
     protected array $_defaultConfig = [
         'index' => null,
         'type' => null,
-        'blacklist' => ['created', 'modified'],
+        'blacklist' => ['created', 'modified', 'id'],
         'whitelist' => [],
+        'foreignKeys' => [],
+        'unsetAssociatedEntityFieldsNotDirtyByFieldName' => [],
     ];
 
     /**
@@ -70,7 +72,7 @@ class AuditLogBehavior extends Behavior
      * @return void
      */
     public function injectTracking(
-        Event $event,
+        EventInterface $event,
         EntityInterface $entity,
         ArrayObject $options
     ): void {
@@ -93,13 +95,15 @@ class AuditLogBehavior extends Behavior
      * @return void
      */
     public function afterSave(
-        Event $event,
+        EventInterface $event,
         EntityInterface $entity,
         ArrayObject $options
     ): void {
         if (!isset($options['_auditQueue'])) {
             return;
         }
+
+        $this->setCommonConfig();
 
         $config = $this->_config;
         if (empty($config['whitelist'])) {
@@ -119,19 +123,97 @@ class AuditLogBehavior extends Behavior
 
         $original = $entity->extractOriginal(array_keys($changed));
         $properties = $this->getAssociationProperties(array_keys($options['associated']));
+
+        // get required associated data
         foreach ($properties as $property) {
-            unset($changed[$property], $original[$property]);
+            if (in_array($property, array_keys($original)) && count($original[$property]) > 0
+                && $original[$property][0] instanceof \Cake\ORM\Entity) { // i.e. associted properies
+                foreach ($original[$property] as $associatedKey => $associatedRow) {
+
+                    if (!$associatedRow->isDirty()) {
+                        $fieldToCompare = $config['unsetAssociatedEntityFieldsNotDirtyByFieldName'][$property] ?? null;
+                        if (isset($fieldToCompare)) {
+                            foreach ($changed[$property] as $changedAssociatedKey => $changedAssociatedRow) {
+                                if ($associatedRow->{$fieldToCompare} == $changedAssociatedRow->{$fieldToCompare}) {
+                                    unset($original[$property][$associatedKey], $changed[$property][$changedAssociatedKey]);
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        /*
+                         * add original data (currently in CakePHP 4.x - assiciated entities do not get the orignal
+                         * values from EntityTrait::extractOriginal())
+                         */
+                        $associatedDirtyFields = $associatedRow->getDirty();
+                        foreach ($associatedDirtyFields as $associatedDirtyField) {
+                            $original[$property][$associatedKey]->{$associatedDirtyField} = $associatedRow->getOriginal($associatedDirtyField);
+                        }
+                    }
+                }
+
+                if (count($original[$property]) > 0) {
+                    $original[$property] = array_values($original[$property]);
+                }
+                if (count($changed[$property]) > 0) {
+                    $changed[$property] = array_values($changed[$property]);
+                }
+
+                // todo: remove any blacklist columns from associated data
+                /*$sourceEntity = basename(
+                    str_replace('\\', '/', $this->table()->getEntityClass())
+                );
+
+                $sourceEntity = Inflector::underscore($sourceEntity);
+                foreach ($original[$property] as $associatedKey => $associatedRow) {
+                    if (isset($associatedRow[$sourceEntity . '_id'])
+                        && in_array($sourceEntity . '_id', $config['blacklist'])) {
+                        unset(
+                            //$changed[$property][$associatedKey][$sourceEntity . '_id'],
+                            $original[$property][$associatedKey][$sourceEntity . '_id']
+                        );
+                    }
+                }*/
+            }
         }
 
+        // now check $changed is empty or equals to $original, if not new
         if (!$changed || ($original === $changed && !$entity->isNew())) {
             return;
+        }
+
+        // find the value of foreign key linked
+        foreach ($config['foreignKeys'] as $model => $fieldName) {
+            $fieldKey = Inflector::underscore(Inflector::singularize($model));
+            if (isset($changed[$fieldKey . '_id'])) {
+                $changed[$fieldKey] = $this->getTableLocator()->get($model)
+                    ->get($changed[$fieldKey . '_id'])->{$fieldName};
+            }
+
+            if (isset($original[$fieldKey . '_id'])) {
+                $original[$fieldKey] = $this->getTableLocator()->get($model)
+                    ->get($original[$fieldKey . '_id'])->{$fieldName};
+            }
         }
 
         $primary = $entity->extract((array)$this->_table->getPrimaryKey());
         $auditEvent = $entity->isNew() ? AuditCreateEvent::class : AuditUpdateEvent::class;
 
+        /*
+         * Please check ModelTable class initialize() method. In that method you can set the display filed,
+         * ModelTable::setDisplayField()
+         */
+        $displayValue = $entity->get($this->_table->getDisplayField());
+
         $transaction = $options['_auditTransaction'];
-        $auditEvent = new $auditEvent($transaction, $primary, $this->_table->getTable(), $changed, $original);
+        $auditEvent = new $auditEvent(
+            $transaction,
+            $primary,
+            $this->_table->getTable(),
+            $changed,
+            $original,
+            $displayValue
+        );
 
         if (!empty($options['_sourceTable'])) {
             $auditEvent->setParentSourceName($options['_sourceTable']->getTable());
@@ -149,11 +231,11 @@ class AuditLogBehavior extends Behavior
      * @return void
      */
     public function afterCommit(
-        Event $event,
+        EventInterface $event,
         EntityInterface $entity,
         ArrayObject $options
     ): void {
-        if (!isset($options['_auditQueue'])) {
+        if (!isset($options['_auditQueue']) || $options['_auditQueue']->count() == 0) {
             return;
         }
 
@@ -167,6 +249,17 @@ class AuditLogBehavior extends Behavior
 
         $data = $this->_table->dispatchEvent('AuditStash.beforeLog', ['logs' => $events]);
         $this->persister()->logEvents($data->getData('logs'));
+
+        // stop duplicate records adding to audit_logs table, when saveMany() is called
+        /**
+         * @var SplObjectStorage $attachedAuditQueueEntities
+         */
+        $options['_auditQueue']->rewind();
+        while ($options['_auditQueue']->valid()) {
+            $obj = $options['_auditQueue']->current();
+            $options['_auditQueue']->next();
+            $options['_auditQueue']->detach($obj);
+        }
     }
 
     /**
@@ -178,7 +271,7 @@ class AuditLogBehavior extends Behavior
      * @return void
      */
     public function afterDelete(
-        Event $event,
+        EventInterface $event,
         EntityInterface $entity,
         ArrayObject $options
     ): void {
@@ -188,7 +281,29 @@ class AuditLogBehavior extends Behavior
         $transaction = $options['_auditTransaction'];
         $parent = isset($options['_sourceTable']) ? $options['_sourceTable']->getTable() : null;
         $primary = $entity->extract((array)$this->_table->getPrimaryKey());
-        $auditEvent = new AuditDeleteEvent($transaction, $primary, $this->_table->getTable(), $parent);
+        $displayValue = $entity->get($this->_table->getDisplayField());
+
+        $this->setCommonConfig();
+
+        $config = $this->_config;
+
+        $original = $entity->getOriginalValues();
+
+        foreach ($original as $originalKey => $originalValue) {
+            if (in_array($originalKey, $config['blacklist'])) {
+                unset($original[$originalKey]);
+            }
+        }
+
+        $auditEvent = new AuditDeleteEvent(
+            $transaction,
+            $primary,
+            $this->_table->getTable(),
+            $parent,
+            $original,
+            $displayValue
+        );
+
         $options['_auditQueue']->attach($entity, $auditEvent);
     }
 
@@ -232,5 +347,18 @@ class AuditLogBehavior extends Behavior
         }
 
         return $result;
+    }
+
+    /**
+     * @return void
+     */
+    private function setCommonConfig()
+    {
+        $commonBlacklist = Configure::read('AuditStash.blacklist') ?? null;
+        if (isset($commonBlacklist)) {
+            $this->setConfig('blacklist', $commonBlacklist);
+        }
+
+        // set other conifgs similar to the above if necessary
     }
 }

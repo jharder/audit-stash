@@ -27,6 +27,7 @@ trait ExtractionTrait
             'type' => $event->getEventType(),
             'source' => $event->getSourceName(),
             'parent_source' => null,
+            'display_value' => null,
             'original' => null,
             'changed' => null,
             'created' => new DateTime($event->getTimestamp()),
@@ -38,6 +39,10 @@ trait ExtractionTrait
 
         if (method_exists($event, 'getParentSourceName')) {
             $fields['parent_source'] = $event->getParentSourceName();
+        }
+
+        if (method_exists($event, 'getDisplayValue')) {
+            $fields['display_value'] = $event->getDisplayValue();
         }
 
         if ($event instanceof BaseEvent) {
