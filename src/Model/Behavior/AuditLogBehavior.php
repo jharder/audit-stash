@@ -210,6 +210,7 @@ class AuditLogBehavior extends Behavior
             $transaction,
             $primary,
             $this->_table->getTable(),
+            null,
             $changed,
             $original,
             $displayValue
