@@ -130,6 +130,7 @@ class AuditLogBehavior extends Behavior
                 && count($original[$property]) > 0
                 && $original[$property][0] instanceof \Cake\ORM\Entity) { // i.e. associated properies
                 
+                /** @var \Cake\ORM\Entity $associatedRow */
                 foreach ($original[$property] as $associatedKey => $associatedRow) {
                     if (!$associatedRow->isDirty()) {
                         $fieldToCompare = $config['unsetAssociatedEntityFieldsNotDirtyByFieldName'][$property] ?? null;
@@ -146,33 +147,45 @@ class AuditLogBehavior extends Behavior
                          * add original data (currently in CakePHP 4.x - assiciated entities do not get the orignal
                          * values from EntityTrait::extractOriginal())
                          */
+                        $associatedFields = $associatedRow->getOriginalFields();
                         $associatedDirtyFields = $associatedRow->getDirty();
-                        foreach ($associatedDirtyFields as $associatedDirtyField) {
-                            $original[$property][$associatedKey]->{$associatedDirtyField} = $associatedRow->getOriginal($associatedDirtyField);
+                        foreach ($associatedFields as $associatedField) {
+                            $f = $associatedRow->getOriginal($associatedField);
+                            
+                            if (!in_array($associatedField, $config['blacklist']) && in_array($associatedField, $associatedDirtyFields)) {
+                                $original[$property][$associatedKey]->{$associatedField} = $f;
+                                $changed[$property][$associatedKey]->{$associatedField} = $associatedRow->get($associatedField);
+                            } else {
+                                unset(
+                                    $original[$property][$associatedKey]->{$associatedField},
+                                    $changed[$property][$associatedKey]->{$associatedField}
+                                );
+                            }
+                        }
+
+                        if (!$associatedRow->isDirty()) {
+                            unset($original[$property], $changed[$property]);
                         }
                     }
                 }
 
-                if (count($original[$property]) > 0) {
-                    $original[$property] = array_values($original[$property]);
+                if (isset($original[$property]) && count($original[$property]) > 0) {
+                    foreach ($original[$property] as $oKey => $oVal) {
+                        if ($original[$property][$oKey]->isDirty()) {
+                            $original[$property][$oKey] = $oVal;
+                        } else {
+                            unset($original[$property][$oKey]);
+                        }
+                    }
                 }
-                if (count($changed[$property]) > 0) {
-                    $changed[$property] = array_values($changed[$property]);
-                }
-
-                // todo: remove any blacklist columns from associated data
-                $sourceEntity = basename(
-                    str_replace('\\', '/', $this->table()->getEntityClass())
-                );
-
-                $sourceEntity = Inflector::underscore($sourceEntity);
-                foreach ($original[$property] as $associatedKey => $associatedRow) {
-                    if (isset($associatedRow[$sourceEntity . '_id'])
-                        && in_array($sourceEntity . '_id', $config['blacklist'])) {
-                        unset(
-                            //$changed[$property][$associatedKey][$sourceEntity . '_id'],
-                            $original[$property][$associatedKey][$sourceEntity . '_id']
-                        );
+                
+                if (isset($changed[$property]) && count($changed[$property]) > 0) {
+                    foreach ($changed[$property] as $cKey => $cVal) {
+                        if ($changed[$property][$cKey]->isDirty()) {
+                            $changed[$property][$cKey] = $cVal;
+                        } else {
+                            unset($changed[$property][$cKey]);
+                        }
                     }
                 }
             }
@@ -201,25 +214,25 @@ class AuditLogBehavior extends Behavior
         $auditEvent = $entity->isNew() ? AuditCreateEvent::class : AuditUpdateEvent::class;
 
         /*
-         * Please check ModelTable class initialize() method. In that method you can set the display filed,
+         * Please check ModelTable class initialize() method. In that method you can set the display field,
          * ModelTable::setDisplayField()
          */
         $displayValue = $entity->get($this->_table->getDisplayField());
 
         $transaction = $options['_auditTransaction'];
+        if (!empty($options['_sourceTable'])) {
+            $sourceTable = $options['_sourceTable']->getTable();
+        }
+
         $auditEvent = new $auditEvent(
             $transaction,
             $primary,
             $this->_table->getTable(),
-            null,
+            $sourceTable ?? null,
             $changed,
             $original,
             $displayValue
         );
-
-        if (!empty($options['_sourceTable'])) {
-            $auditEvent->setParentSourceName($options['_sourceTable']->getTable());
-        }
 
         $options['_auditQueue']->attach($entity, $auditEvent);
     }
@@ -300,6 +313,7 @@ class AuditLogBehavior extends Behavior
             $primary,
             $this->_table->getTable(),
             $parent,
+            null,
             $original,
             $displayValue
         );
