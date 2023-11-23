@@ -27,6 +27,7 @@ class AuditLogsTable extends Table
             'transaction' => 'string',
             'type' => 'string',
             'primary_key' => 'integer',
+            'display_value' => 'string',
             'source' => 'string',
             'parent_source' => 'string',
             'original' => 'string',
@@ -73,6 +74,11 @@ class TablePersisterTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Tests that TablePersister defaults are correct.
+     *
+     * @return void
+     */
     public function testConfigDefaults()
     {
         $expected = [
@@ -86,11 +92,21 @@ class TablePersisterTest extends TestCase
         $this->assertEquals($expected, $this->TablePersister->getConfig());
     }
 
+    /**
+     * Test getting the default table.
+     *
+     * @return void
+     */
     public function testGetTableDefault()
     {
         $this->assertInstanceOf(AuditLogsTable::class, $this->TablePersister->getTable());
     }
 
+    /**
+     * Test setting the table alias.
+     *
+     * @return void
+     */
     public function testSetTableAsAlias()
     {
         $this->assertInstanceOf(AuditLogsTable::class, $this->TablePersister->getTable());
@@ -99,6 +115,11 @@ class TablePersisterTest extends TestCase
         $this->assertEquals('Custom', $this->TablePersister->getTable()->getAlias());
     }
 
+    /**
+     * Test that a table object may be used for the persister.
+     *
+     * @return void
+     */
     public function testSetTableAsObject()
     {
         $customTable = $this->getTableLocator()->get('Custom');
@@ -107,6 +128,11 @@ class TablePersisterTest extends TestCase
         $this->assertSame($customTable, $this->TablePersister->getTable());
     }
 
+    /**
+     * Test that providing an invalid table fails.
+     *
+     * @return void
+     */
     public function testSetInvalidTable()
     {
         $this->expectException(InvalidArgumentException::class);
@@ -115,11 +141,13 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that creating an event with null values can be serialized.
+     *
      * @throws \Exception
      */
     public function testSerializeNull()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, null);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, null, null, null);
         $event->setMetaInfo([]);
 
         $entity = new Entity([
@@ -127,6 +155,7 @@ class TablePersisterTest extends TestCase
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => null,
             'original' => null,
             'changed' => null,
             'created' => new DateTime($event->getTimestamp()),
@@ -148,11 +177,13 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that events extract provided meta fields.
+     *
      * @throws \Exception
      */
     public function testExtractMetaFields()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testExtractMetaFields');
         $event->setMetaInfo([
             'foo' => 'bar',
             'baz' => [
@@ -166,6 +197,7 @@ class TablePersisterTest extends TestCase
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testExtractMetaFields',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -194,11 +226,13 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that all meta fields may be set to extract.
+     *
      * @throws \Exception
      */
     public function testExtractAllMetaFields()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testExtractAllMetaFields');
         $event->setMetaInfo([
             'foo' => 'bar',
             'baz' => [
@@ -212,6 +246,7 @@ class TablePersisterTest extends TestCase
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testExtractAllMetaFields',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -240,11 +275,13 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that meta fields are not unset when specified.
+     *
      * @throws \Exception
      */
     public function testExtractMetaFieldsDoNotUnset()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testExtractMetaFieldsDoNotUnset');
         $event->setMetaInfo([
             'foo' => 'bar',
         ]);
@@ -254,6 +291,7 @@ class TablePersisterTest extends TestCase
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testExtractMetaFieldsDoNotUnset',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -281,11 +319,13 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that all meta fields are not unset when requested.
+     *
      * @throws \Exception
      */
     public function testExtractAllMetaFieldsDoNotUnset()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testExtractAllMetaFieldsDoNotUnset');
         $event->setMetaInfo([
             'foo' => 'bar',
         ]);
@@ -295,6 +335,7 @@ class TablePersisterTest extends TestCase
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testExtractAllMetaFieldsDoNotUnset',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -320,11 +361,13 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that error logging works.
+     *
      * @throws \Exception
      */
     public function testErrorLogging()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testErrorLogging');
 
         /** @var \AuditStash\Persister\TablePersister|\PHPUnit\Framework\MockObject\MockObject $TablePersister */
         $TablePersister = $this
@@ -337,6 +380,7 @@ class TablePersisterTest extends TestCase
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_source' => 'testErrorLogging',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -365,6 +409,8 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that error logging can be disabled.
+     *
      * @throws \Exception
      */
     public function testDisableErrorLogging()
@@ -389,22 +435,25 @@ class TablePersisterTest extends TestCase
             }
         );
 
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testDisableErrorLogging');
         $TablePersister->logEvents([$event]);
     }
 
     /**
+     * Test that a compound primary key can be extracted according to default strategy.
+     *
      * @throws \Exception
      */
     public function testCompoundPrimaryKeyExtractDefault()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', null, [], [], 'testCompoundPrimaryKeyExtractDefault');
 
         $entity = new Entity([
             'transaction' => '62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96',
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testCompoundPrimaryKeyExtractDefault',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -427,17 +476,20 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that a primary key can be extracted according to the raw strategy.
+     *
      * @throws \Exception
      */
     public function testPrimaryKeyExtractRaw()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testPrimaryKeyExtractRaw');
 
         $entity = new Entity([
             'transaction' => '62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96',
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testPrimaryKeyExtractRaw',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -461,17 +513,20 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that extracting a compound primary key can be extracted according to the raw strategy.
+     *
      * @throws \Exception
      */
     public function testCompoundPrimaryKeyExtractRaw()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', null, [], [], 'testCompoundPrimaryKeyExtractRaw');
 
         $entity = new Entity([
             'transaction' => '62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96',
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testCompoundPrimaryKeyExtractRaw',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -497,17 +552,20 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that a primary key can be extracted according to the properties strategy.
+     *
      * @throws \Exception
      */
     public function testPrimaryKeyExtractProperties()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testPrimaryKeyExtractProperties');
 
         $entity = new Entity([
             'transaction' => '62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96',
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testPrimaryKeyExtractProperties',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -531,17 +589,20 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that a compound primary key can be extracted according to the properties strategy.
+     *
      * @throws \Exception
      */
     public function testCompoundPrimaryKeyExtractProperties()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', null, [], [], 'testCompoundPrimaryKeyExtractProperties');
 
         $entity = new Entity([
             'transaction' => '62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96',
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testCompoundPrimaryKeyExtractProperties',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -567,17 +628,20 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that a primary key can be extracted according to the serialized strategy.
+     *
      * @throws \Exception
      */
     public function testPrimaryKeyExtractSerialized()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 'pk', 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 'pk', 'source', null, [], [], 'testPrimaryKeyExtractSerialized');
 
         $entity = new Entity([
             'transaction' => '62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96',
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testPrimaryKeyExtractSerialized',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -603,17 +667,20 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that a compound primary key can be extracted according to the serialized strategy.
+     *
      * @throws \Exception
      */
     public function testCompoundPrimaryKeyExtractSerialized()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', [1, 2, 3], 'source', null, [], [], 'testCompoundPrimaryKeyExtractSerialized');
 
         $entity = new Entity([
             'transaction' => '62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96',
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testCompoundPrimaryKeyExtractSerialized',
             'original' => '[]',
             'changed' => '[]',
             'created' => new DateTime($event->getTimestamp()),
@@ -639,11 +706,13 @@ class TablePersisterTest extends TestCase
     }
 
     /**
+     * Test that extracted fields can be extracted without serialization.
+     *
      * @throws \Exception
      */
     public function testDoNotSerializeFields()
     {
-        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', [], []);
+        $event = new AuditCreateEvent('62ba2e1e-1524-4d4e-bb34-9bf0e03b6a96', 1, 'source', null, [], [], 'testDoNotSerializeFields');
         $event->setMetaInfo([
             'foo' => 'bar',
         ]);
@@ -653,6 +722,7 @@ class TablePersisterTest extends TestCase
             'type' => 'create',
             'source' => 'source',
             'parent_source' => null,
+            'display_value' => 'testDoNotSerializeFields',
             'original' => [],
             'changed' => [],
             'created' => new DateTime($event->getTimestamp()),
@@ -681,7 +751,15 @@ class TablePersisterTest extends TestCase
         $this->TablePersister->logEvents([$event]);
     }
 
-    public function getMockForModel($alias, array $methods = [], array $options = []): Table|MockObject
+    /**
+     * Get the mock for this model.
+     *
+     * @param string $alias The model to get a mock for.
+     * @param array<string> $methods The list of methods to mock
+     * @param array<string, mixed> $options The config data for the mock's constructor.
+     * @return Table|MockObject
+     */
+    public function getMockForModel(string $alias, array $methods = [], array $options = []): Table|MockObject
     {
         return parent::getMockForModel($alias, $methods, $options + [
             'className' => AuditLogsTable::class,

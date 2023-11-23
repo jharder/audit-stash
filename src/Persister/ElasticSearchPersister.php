@@ -111,6 +111,7 @@ class ElasticSearchPersister implements PersisterInterface
                 'transaction' => $log->getTransactionId(),
                 'type' => $eventType,
                 'primary_key' => $primary,
+                'display_value' => $log->getDisplayValue(),
                 'source' => $log->getSourceName(),
                 'parent_source' => $log->getParentSourceName(),
                 'original' => $eventType === 'delete' ? null : $log->getOriginal(),

@@ -36,8 +36,10 @@ abstract class BaseEvent implements EventInterface
      * @param string $transactionId The global transaction id
      * @param mixed $id The entities primary key
      * @param string $source The name of the source (table)
+     * @param ?string $parentSource The name of the parent source (table) for associated records
      * @param array|null $changed The array of changes that got detected for the entity
      * @param array|null $original The original values the entity had before it got changed
+     * @param string|int|null $displayValue Human-readable field to identify records
      */
     public function __construct(
         string $transactionId,
@@ -46,7 +48,7 @@ abstract class BaseEvent implements EventInterface
         ?string $parentSource,
         ?array $changed,
         ?array $original,
-        ?string $displayValue
+        string|int|null $displayValue
     ) {
         $this->transactionId = $transactionId;
         $this->id = $id;

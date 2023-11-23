@@ -13,6 +13,7 @@ use Cake\Core\Configure;
 use Cake\Datasource\EntityInterface;
 use Cake\Event\EventInterface;
 use Cake\ORM\Behavior;
+use Cake\ORM\Locator\LocatorAwareTrait;
 use Cake\Utility\Inflector;
 use Cake\Utility\Text;
 use SplObjectStorage;
@@ -24,6 +25,8 @@ use function Cake\Collection\collection;
  */
 class AuditLogBehavior extends Behavior
 {
+    use LocatorAwareTrait;
+
     /**
      * Default configuration.
      *
@@ -32,10 +35,12 @@ class AuditLogBehavior extends Behavior
     protected array $_defaultConfig = [
         'index' => null,
         'type' => null,
-        'blacklist' => ['created', 'modified', 'id'],
+        'blacklist' => ['created', 'modified'],
         'whitelist' => [],
         'foreignKeys' => [],
         'unsetAssociatedEntityFieldsNotDirtyByFieldName' => [],
+        'createEventNullOriginalColumn' => false,
+        'deleteEventNullChangedColumn' => false,
     ];
 
     /**
@@ -126,10 +131,13 @@ class AuditLogBehavior extends Behavior
 
         // Get required associated data
         foreach ($properties as $property) {
-            if (in_array($property, array_keys($original))
-                && count($original[$property]) > 0
-                && $original[$property][0] instanceof \Cake\ORM\Entity) { // i.e. associated properies
-                
+            if (
+                in_array($property, array_keys($original))
+                && (
+                    (is_countable($original[$property]) && count($original[$property]) > 0)
+                    || $original[$property] instanceof \Cake\ORM\Entity
+                )
+            ) {
                 /** @var \Cake\ORM\Entity $associatedRow */
                 foreach ($original[$property] as $associatedKey => $associatedRow) {
                     if (!$associatedRow->isDirty()) {
@@ -150,10 +158,8 @@ class AuditLogBehavior extends Behavior
                         $associatedFields = $associatedRow->getOriginalFields();
                         $associatedDirtyFields = $associatedRow->getDirty();
                         foreach ($associatedFields as $associatedField) {
-                            $f = $associatedRow->getOriginal($associatedField);
-                            
                             if (!in_array($associatedField, $config['blacklist']) && in_array($associatedField, $associatedDirtyFields)) {
-                                $original[$property][$associatedKey]->{$associatedField} = $f;
+                                $original[$property][$associatedKey]->{$associatedField} = $associatedRow->getOriginal($associatedField);
                                 $changed[$property][$associatedKey]->{$associatedField} = $associatedRow->get($associatedField);
                             } else {
                                 unset(
@@ -169,22 +175,38 @@ class AuditLogBehavior extends Behavior
                     }
                 }
 
-                if (isset($original[$property]) && count($original[$property]) > 0) {
-                    foreach ($original[$property] as $oKey => $oVal) {
-                        if ($original[$property][$oKey]->isDirty()) {
-                            $original[$property][$oKey] = $oVal;
-                        } else {
-                            unset($original[$property][$oKey]);
+                if (isset($original[$property])) {
+                    $oProp = $original[$property];
+
+                    if (is_countable($oProp)) {
+                        foreach ($oProp as $oKey => $oVal) {
+                            if ($oProp[$oKey]->isDirty()) {
+                                $oProp[$oKey] = $oVal;
+                            } else {
+                                unset($oProp[$oKey]);
+                            }
+                        }
+                    } else {
+                        if (!$oProp->isDirty()) {
+                            unset($oProp);
                         }
                     }
                 }
-                
-                if (isset($changed[$property]) && count($changed[$property]) > 0) {
-                    foreach ($changed[$property] as $cKey => $cVal) {
-                        if ($changed[$property][$cKey]->isDirty()) {
-                            $changed[$property][$cKey] = $cVal;
-                        } else {
-                            unset($changed[$property][$cKey]);
+
+                if (isset($changed[$property])) {
+                    $cProp = $changed[$property];
+
+                    if (is_countable($cProp)) {
+                        foreach ($cProp as $cKey => $oVal) {
+                            if ($cProp[$cKey]->isDirty()) {
+                                $cProp[$cKey] = $oVal;
+                            } else {
+                                unset($cProp[$cKey]);
+                            }
+                        }
+                    } else {
+                        if (!$cProp->isDirty()) {
+                            unset($cProp);
                         }
                     }
                 }
@@ -216,8 +238,10 @@ class AuditLogBehavior extends Behavior
         /*
          * Please check ModelTable class initialize() method. In that method you can set the display field,
          * ModelTable::setDisplayField()
+         *
+         * Since the displayField on a table can be array|string|null, cast this value to a string.
          */
-        $displayValue = $entity->get($this->_table->getDisplayField());
+        $displayValue = $entity->get((string)($this->_table->getDisplayField()));
 
         $transaction = $options['_auditTransaction'];
         if (!empty($options['_sourceTable'])) {
@@ -266,9 +290,7 @@ class AuditLogBehavior extends Behavior
         $this->persister()->logEvents($data->getData('logs'));
 
         // stop duplicate records adding to audit_logs table, when saveMany() is called
-        /**
-         * @var SplObjectStorage $attachedAuditQueueEntities
-         */
+        /** @var SplObjectStorage $attachedAuditQueueEntities */
         $options['_auditQueue']->rewind();
         while ($options['_auditQueue']->valid()) {
             $obj = $options['_auditQueue']->current();
@@ -313,7 +335,7 @@ class AuditLogBehavior extends Behavior
             $primary,
             $this->_table->getTable(),
             $parent,
-            null,
+            Configure::read('AuditStash.deleteEventNullChangedColumn') ? null : $original,
             $original,
             $displayValue
         );

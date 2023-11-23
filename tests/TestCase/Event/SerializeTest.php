@@ -18,7 +18,7 @@ class SerializeTest extends TestCase
      */
     public function testSerializeCreate()
     {
-        $event = new AuditCreateEvent('123', 50, 'articles', ['title' => 'foo'], ['title' => 'bar']);
+        $event = new AuditCreateEvent('123', 50, 'articles', null, ['title' => 'foo'], null, 'testSerializeCreate');
         $event->setMetaInfo(['extra' => 'info']);
         $serialized = serialize($event);
         $this->assertEquals($event, unserialize($serialized));
@@ -31,7 +31,7 @@ class SerializeTest extends TestCase
      */
     public function testSerializeUpdate()
     {
-        $event = new AuditUpdateEvent('123', 50, 'articles', ['title' => 'foo'], ['title' => 'bar']);
+        $event = new AuditUpdateEvent('123', 50, 'articles', null, ['title' => 'foo'], ['title' => 'bar'], 'testSerializeUpdate');
         $event->setMetaInfo(['extra' => 'info']);
         $serialized = serialize($event);
         $this->assertEquals($event, unserialize($serialized));
@@ -44,7 +44,7 @@ class SerializeTest extends TestCase
      */
     public function testSerializeDelete()
     {
-        $event = new AuditDeleteEvent('123', 50, 'articles', 'authors');
+        $event = new AuditDeleteEvent('123', 50, 'articles', null, null, ['authors'], 'testSerializeDelete');
         $event->setMetaInfo(['extra' => 'info']);
         $serialized = serialize($event);
         $this->assertEquals($event, unserialize($serialized));
@@ -58,9 +58,9 @@ class SerializeTest extends TestCase
     public function testJsonSerializeCreate()
     {
         $factory = new EventFactory();
-        $event = new AuditCreateEvent('123', 50, 'articles', ['title' => 'foo'], ['title' => 'bar']);
+        $event = new AuditCreateEvent('123', 50, 'articles', null, ['title' => 'foo'], null, 'testJsonSerializeCreate');
         $event->setMetaInfo(['extra' => 'info']);
-        $serialized = json_encode($event);
+        $serialized = json_encode($event->jsonSerialize());
         $result = $factory->create(json_decode($serialized, true));
         $this->assertEquals($event, $result);
     }
@@ -73,7 +73,7 @@ class SerializeTest extends TestCase
     public function testJsonSerializeUpdate()
     {
         $factory = new EventFactory();
-        $event = new AuditUpdateEvent('123', 50, 'articles', ['title' => 'foo'], ['title' => 'bar']);
+        $event = new AuditUpdateEvent('123', 50, 'articles', null, ['title' => 'foo'], ['title' => 'bar'], 'testJsonSerializeUpdate');
         $event->setMetaInfo(['extra' => 'info']);
         $serialized = json_encode($event);
         $result = $factory->create(json_decode($serialized, true));
@@ -88,7 +88,7 @@ class SerializeTest extends TestCase
     public function testJsonSerializeDelete()
     {
         $factory = new EventFactory();
-        $event = new AuditDeleteEvent('123', 50, 'articles', 'authors');
+        $event = new AuditDeleteEvent('123', 50, 'articles', null, null, ['authors'], 'testJsonSerializeDelete');
         $event->setMetaInfo(['extra' => 'info']);
         $serialized = json_encode($event);
         $result = $factory->create(json_decode($serialized, true));

@@ -69,6 +69,7 @@ trait SerializableEventTrait
             'primary_key' => $this->id,
             'source' => $this->source,
             'parent_source' => $this->parentSource,
+            'display_value' => $this->displayValue,
             '@timestamp' => $this->timestamp,
             'meta' => $this->meta,
         ];

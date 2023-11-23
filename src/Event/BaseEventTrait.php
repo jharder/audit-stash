@@ -51,9 +51,11 @@ trait BaseEventTrait
     protected array $meta = [];
 
     /**
-     * @var string
+     * Human-readable friendly display value.
+     *
+     * @var string|int|null
      */
-    protected string $displayValue;
+    protected string|int|null $displayValue;
 
     /**
      * Returns the global transaction id in which this event is contained.
@@ -142,17 +144,21 @@ trait BaseEventTrait
     }
 
     /**
-     * @return string
+     * Gets the display value for this event.
+     *
+     * @return string|int|null
      */
-    public function getDisplayValue(): string
+    public function getDisplayValue(): string|int|null
     {
         return $this->displayValue;
     }
 
     /**
-     * @return string
+     * Sets the display value for this event.
+     *
+     * @return string|int|null
      */
-    public function setDisplayValue(string $displayValue): void
+    public function setDisplayValue(string|int|null $displayValue): void
     {
         $this->displayValue = $displayValue;
     }

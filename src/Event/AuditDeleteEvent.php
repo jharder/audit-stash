@@ -4,12 +4,12 @@ declare(strict_types=1);
 namespace AuditStash\Event;
 
 /**
- * Represents an audit log event for a newly deleted record.
+ * Represents an audit log event for a deleted record.
  */
 class AuditDeleteEvent extends BaseEvent
 {
     /**
-     * Returns the name of this event type.
+     * Returns the type name of this event object.
      *
      * @return string
      */

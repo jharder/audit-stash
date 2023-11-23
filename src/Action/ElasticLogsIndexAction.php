@@ -12,6 +12,7 @@ use Cake\Http\ServerRequest;
 use Crud\Action\IndexAction;
 use DateTime;
 use Elastica\Query\BoolQuery;
+use Elastica\Query\MatchAll;
 use Elastica\Query\QueryString;
 use Exception;
 
@@ -58,9 +59,12 @@ class ElasticLogsIndexAction extends IndexAction
             $query->where(function (QueryBuilder $builder) use ($request): BoolQuery {
                 $fields = explode(',', $request->getQuery('changed_fields'));
                 $fields = array_map(fn ($f): string => 'changed.' . $f, array_map('trim', $fields));
-                $fields = array_map([$builder, 'exists'], $fields);
 
-                return $builder->and($fields);
+                $conditions = array_map([$builder, 'exists'], $fields);
+                $matchAllQuery = new MatchAll();
+                array_unshift($conditions, $matchAllQuery);
+
+                return $builder->and(...$conditions);
             });
         }
 
@@ -91,7 +95,7 @@ class ElasticLogsIndexAction extends IndexAction
      */
     protected function _table(): Index
     {
-        return $this->_controller()->AuditLogs = $this->getIndexRepository('AuditStash.AuditLogs');
+        return $this->getIndexRepository('AuditStash.AuditLogs');
     }
 
     /**

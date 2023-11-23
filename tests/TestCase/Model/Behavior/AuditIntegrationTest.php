@@ -9,7 +9,9 @@ use AuditStash\Event\AuditUpdateEvent;
 use AuditStash\Model\Behavior\AuditLogBehavior;
 use AuditStash\PersisterInterface;
 use Cake\ORM\Locator\LocatorAwareTrait;
+use Cake\ORM\Table;
 use Cake\TestSuite\TestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class DebugPersister implements PersisterInterface
 {
@@ -36,6 +38,20 @@ class AuditIntegrationTest extends TestCase
     ];
 
     /**
+     * Test table reference.
+     *
+     * @var Table
+     */
+    public Table $table;
+
+    /**
+     * Mock persister reference.
+     *
+     * @var MockObject
+     */
+    public MockObject $persister;
+
+    /**
      * tests setup.
      *
      * @return void
@@ -47,6 +63,7 @@ class AuditIntegrationTest extends TestCase
         $this->table->hasMany('Comments');
         $this->table->belongsToMany('Tags');
         $this->table->belongsTo('Authors');
+        $this->table->setDisplayField('id');
         $this->table->addBehavior('AuditLog', [
             'className' => AuditLogBehavior::class,
         ]);
@@ -71,7 +88,7 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(1, $events);
                 $event = $events[0];
                 $this->assertInstanceOf(AuditCreateEvent::class, $event);
@@ -86,7 +103,7 @@ class AuditIntegrationTest extends TestCase
 
                 $data = $entity->toArray();
                 $this->assertEquals($data, $event->getChanged());
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -98,14 +115,14 @@ class AuditIntegrationTest extends TestCase
      */
     public function testUpdateArticle()
     {
-        $entity = $this->table->get(1);
+        $entity = $this->table->get(primaryKey: 1);
         $entity->title = 'Changed title';
         $entity->published = 'Y';
 
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(1, $events);
                 $event = $events[0];
                 $this->assertInstanceOf(AuditUpdateEvent::class, $event);
@@ -118,7 +135,7 @@ class AuditIntegrationTest extends TestCase
                 ];
                 $this->assertEquals($expected, $event->getChanged());
                 $this->assertNotEmpty($event->getTransactionId());
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -140,7 +157,7 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(1, $events);
                 $event = $events[0];
                 $this->assertInstanceOf(AuditCreateEvent::class, $event);
@@ -149,9 +166,9 @@ class AuditIntegrationTest extends TestCase
                 $this->assertEquals('articles', $event->getSourceName());
                 $changed = $event->getChanged();
                 $this->assertEquals(1, $changed['author_id']);
-                $this->assertFalse(isset($changed['author']));
+                $this->assertFalse($changed['author']->isDirty());
                 $this->assertNotEmpty($event->getTransactionId());
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -171,7 +188,7 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(1, $events);
                 $event = $events[0];
                 $this->assertInstanceOf(AuditUpdateEvent::class, $event);
@@ -181,11 +198,11 @@ class AuditIntegrationTest extends TestCase
                 $expected = [
                     'title' => 'Changed title',
                     'author_id' => 2,
+                    'author' => $entity->author,
                 ];
                 $this->assertEquals($expected, $event->getChanged());
-                $this->assertFalse(isset($changed['author']));
                 $this->assertNotEmpty($event->getTransactionId());
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -211,7 +228,7 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(2, $events);
                 $this->assertEquals('authors', $events[0]->getSourceName());
                 $this->assertEquals('articles', $events[1]->getSourceName());
@@ -221,9 +238,9 @@ class AuditIntegrationTest extends TestCase
                 $this->assertSame($events[0]->getTransactionId(), $events[1]->getTransactionId());
 
                 $this->assertEquals(['id' => 5, 'name' => 'Jose'], $events[0]->getChanged());
-                $this->assertFalse(isset($events[1]->getChanged()['author']));
+                $this->assertTrue(isset($events[1]->getChanged()['author']));
                 $this->assertEquals('new article body', $events[1]->getChanged()['body']);
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -254,8 +271,8 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
-                $this->assertCount(2, $events);
+            ->willReturnCallback(function (array $events) use ($entity) {
+                $this->assertCount(3, $events);
                 $this->assertEquals('comments', $events[0]->getSourceName());
                 $this->assertEquals('comments', $events[1]->getSourceName());
 
@@ -277,7 +294,7 @@ class AuditIntegrationTest extends TestCase
                     'comment' => 'This is another comment',
                 ];
                 $this->assertEquals($expected, $events[1]->getChanged());
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -306,7 +323,7 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(3, $events);
                 $this->assertEquals('comments', $events[0]->getSourceName());
                 $this->assertEquals('articles', $events[0]->getParentSourceName());
@@ -316,7 +333,7 @@ class AuditIntegrationTest extends TestCase
                 $this->assertNotEmpty($events[0]->getTransactionId());
                 $this->assertSame($events[0]->getTransactionId(), $events[1]->getTransactionId());
                 $this->assertSame($events[0]->getTransactionId(), $events[2]->getTransactionId());
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -337,6 +354,10 @@ class AuditIntegrationTest extends TestCase
             'className' => AuditLogBehavior::class,
         ]);
 
+        // Explicitly set the displayField for the above tables.
+        $this->table->Tags->setDisplayField('id');
+        $this->table->Tags->ArticlesTags->setDisplayField('id');
+
         $entity = $this->table->get(primaryKey: 1, contain: ['Tags']);
         $entity->tags[] = $this->table->Tags->newEntity([
             'name' => 'This is a Tag',
@@ -347,7 +368,7 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(3, $events);
                 $this->assertEquals('tags', $events[0]->getSourceName());
                 $this->assertEquals('articles_tags', $events[1]->getSourceName());
@@ -355,7 +376,7 @@ class AuditIntegrationTest extends TestCase
 
                 $this->assertNotEmpty($events[0]->getTransactionId());
                 $this->assertSame($events[0]->getTransactionId(), $events[1]->getTransactionId());
-            }));
+            });
 
         $this->table->save($entity);
     }
@@ -367,18 +388,18 @@ class AuditIntegrationTest extends TestCase
      */
     public function testDelete()
     {
-        $entity = $this->table->get(1);
+        $entity = $this->table->get(primaryKey: 1);
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(1, $events);
                 $this->assertinstanceOf(AuditDeleteEvent::class, $events[0]);
                 $this->assertEquals(1, $events[0]->getId());
                 $this->assertEquals('articles', $events[0]->getSourceName());
                 $this->assertNotEmpty($events[0]->getTransactionId());
                 $this->assertNotEmpty($events[0]->getOriginal());
-            }));
+            });
 
         $this->table->delete($entity);
     }
@@ -410,7 +431,7 @@ class AuditIntegrationTest extends TestCase
         $this->persister
             ->expects($this->once())
             ->method('logEvents')
-            ->will($this->returnCallback(function (array $events) use ($entity) {
+            ->willReturnCallback(function (array $events) use ($entity) {
                 $this->assertCount(5, $events);
                 $id = $events[0]->getTransactionId();
                 foreach ($events as $event) {
@@ -424,7 +445,7 @@ class AuditIntegrationTest extends TestCase
                 $this->assertEquals('comments', $events[2]->getSourceName());
                 $this->assertEquals('comments', $events[3]->getSourceName());
                 $this->assertEquals('articles', $events[4]->getSourceName());
-            }));
+            });
 
         $this->table->delete($entity);
     }

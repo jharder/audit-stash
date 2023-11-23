@@ -72,13 +72,13 @@ class ElasticImportCommand extends Command
             yield $k => $v;
         };
 
-        if (!empty($this->params['type-map'])) {
-            $map = explode(',', $this->params['type-map']);
+        if (!empty($args->getOption('type-map'))) {
+            $map = explode(',', $args->getOption('type-map'));
             $map = collection($map)->unfold($featureList)->toArray();
         }
 
-        if (!empty($this->params['extra-meta'])) {
-            $meta = explode(',', $this->params['extra-meta']);
+        if (!empty($args->getOption('extra-meta'))) {
+            $meta = explode(',', $args->getOption('extra-meta'));
             $meta = collection($meta)->unfold($featureList)->toArray();
         }
         $from = DateTime::parse($args->getOption('from'))
@@ -104,13 +104,13 @@ class ElasticImportCommand extends Command
             ->where(function ($exp) use ($from, $until) {
                 return $exp->between('Audits.created', $from, $until, 'datetime');
             })
-            ->where(function ($exp) {
-                if (!empty($this->params['exclude-models'])) {
-                    $exp->notIn('Audits.model', explode(',', $this->params['exclude-models']));
+            ->where(function ($exp) use ($args) {
+                if (!empty($args->getOption('exclude-models'))) {
+                    $exp->notIn('Audits.model', explode(',', $args->getOption('exclude-models')));
                 }
 
-                if (!empty($this->params['models'])) {
-                    $exp->in('Audits.model', explode(',', $this->params['models']));
+                if (!empty($args->getOption('models'))) {
+                    $exp->in('Audits.model', explode(',', $args->getOption('models')));
                 }
 
                 return $exp;

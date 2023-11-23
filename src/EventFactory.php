@@ -30,29 +30,15 @@ class EventFactory
             'delete' => AuditDeleteEvent::class,
         ];
 
-        if ($data['type'] !== 'delete') {
-            $event = new $map[$data['type']](
-                $data['transaction'],
-                $data['primary_key'],
-                $data['source'],
-                $data['changed'],
-                $data['original'],
-            );
-        } else {
-            $event = new $map[$data['type']](
-                $data['transaction'],
-                $data['primary_key'],
-                $data['source'],
-            );
-        }
-
-        if (isset($data['display_value'])) {
-            $event->setDisplayValue($data['display_value']);
-        }
-
-        if (isset($data['parent_source'])) {
-            $event->setParentSourceName($data['parent_source']);
-        }
+        $event = new $map[$data['type']](
+            $data['transaction'],
+            $data['primary_key'],
+            $data['source'],
+            $data['parent_source'],
+            $data['changed'],
+            $data['original'],
+            $data['display_value'],
+        );
 
         $reflection = new ReflectionObject($event);
         $timestamp = $reflection->getProperty('timestamp');

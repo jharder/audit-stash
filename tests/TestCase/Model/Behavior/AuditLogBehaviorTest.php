@@ -11,10 +11,37 @@ use Cake\Event\Event;
 use Cake\ORM\Entity;
 use Cake\ORM\Table;
 use Cake\TestSuite\TestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 use SplObjectStorage;
 
 class AuditLogBehaviorTest extends TestCase
 {
+    /**
+     * Test table reference.
+     *
+     * @var Table
+     */
+    public Table $table;
+
+    /**
+     * Mock persister reference.
+     *
+     * @var MockObject
+     */
+    public MockObject $persister;
+
+    /**
+     * Audit behavior reference.
+     *
+     * @var AuditLogBehavior
+     */
+    public AuditLogBehavior $behavior;
+
+    /**
+     * Test setup.
+     *
+     * @return void
+     */
     public function setUp(): void
     {
         parent::setUp();
@@ -25,7 +52,12 @@ class AuditLogBehaviorTest extends TestCase
         ]);
     }
 
-    public function testOnSaveCreateWithWithelist()
+    /**
+     * Test that save event with whitelist keeps whitelisted column.
+     *
+     * @return void
+     */
+    public function testOnSaveCreateWithWhitelist()
     {
         $data = [
             'id' => 13,
@@ -52,7 +84,12 @@ class AuditLogBehaviorTest extends TestCase
         $this->assertInstanceOf(AuditCreateEvent::class, $result);
     }
 
-    public function testOnSaveUpdateWithWithelist()
+    /**
+     * Test that update event with whitelist keeps whitelisted column.
+     *
+     * @return void
+     */
+    public function testOnSaveUpdateWithWhitelist()
     {
         $data = [
             'id' => 13,
@@ -79,6 +116,11 @@ class AuditLogBehaviorTest extends TestCase
         $this->assertInstanceOf(AuditUpdateEvent::class, $result);
     }
 
+    /**
+     * Test that create event with blacklist removes blacklisted columns.
+     *
+     * @return void
+     */
     public function testSaveCreateWithBlacklist()
     {
         $this->behavior->setConfig('blacklist', ['author_id']);
@@ -104,6 +146,11 @@ class AuditLogBehaviorTest extends TestCase
         $this->assertEquals($data, $result->getChanged());
     }
 
+    /**
+     * Test that update event with blacklist removes blacklisted columns.
+     *
+     * @return void
+     */
     public function testSaveUpdateWithBlacklist()
     {
         $this->behavior->setConfig('blacklist', ['author_id']);
@@ -127,6 +174,11 @@ class AuditLogBehaviorTest extends TestCase
         $this->assertFalse(isset($queue[$entity]));
     }
 
+    /**
+     * Test that create event whitelists the table schema.
+     *
+     * @return void
+     */
     public function testSaveWithFieldsFromSchema()
     {
         $this->table->setSchema([

@@ -5,6 +5,7 @@ namespace AuditStash\Persister;
 
 use AuditStash\Event\BaseEvent;
 use AuditStash\EventInterface;
+use Cake\Core\Configure;
 use Cake\Database\Type\DateTimeType;
 use Cake\Database\TypeFactory;
 use Cake\Utility\Hash;
@@ -52,8 +53,15 @@ trait ExtractionTrait
             $_original = $serialize ? $this->serialize($event->getOriginal()) : $event->getOriginal();
             $_changed = $serialize ? $this->serialize($event->getChanged()) : $event->getChanged();
 
-            $fields['original'] = $fields['type'] == 'create' ? null : $_original;
-            $fields['changed'] = $fields['type'] == 'delete' ? null : $_changed;
+            // Original behavior inserted the data for both the changed and original columns on all events.
+            // This can be configured to instead insert null original data for create events,
+            // and null changed data for delete events.
+            // Default is to not insert null for these events.
+            $_createFallback = Configure::read('AuditStash.createEventNullOriginalColumn') ? null : $_original;
+            $_deleteFallback = Configure::read('AuditStash.deleteEventNullChangedColumn') ? null : $_changed;
+
+            $fields['original'] = $fields['type'] == 'create' ? $_createFallback : $_original;
+            $fields['changed'] = $fields['type'] == 'delete' ? $_deleteFallback : $_changed;
         }
 
         return $fields;

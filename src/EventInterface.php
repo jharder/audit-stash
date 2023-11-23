@@ -72,9 +72,9 @@ interface EventInterface extends JsonSerializable, Serializable
      * Returns the display field value.
      * The display field is set via the Model.setDisplayField($fieldName) property
      *
-     * @return string
+     * @return string|int|null
      */
-    public function getDisplayValue(): string;
+    public function getDisplayValue(): string|int|null;
 
     /**
      * Returns an array with the properties and their values before they got changed.

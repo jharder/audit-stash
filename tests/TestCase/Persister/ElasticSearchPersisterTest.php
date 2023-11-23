@@ -41,7 +41,7 @@ class ElasticSearchPersisterTest extends TestCase
             'published' => 'Y',
         ];
 
-        $events[] = new AuditCreateEvent('1234', 50, 'articles', $data, $data);
+        $events[] = new AuditCreateEvent('1234', 50, 'articles', null, $data, null, 'testLogEvents');
         $clientMock->expects($this->once())->method('addDocuments');
         $persister->logEvents($events);
     }

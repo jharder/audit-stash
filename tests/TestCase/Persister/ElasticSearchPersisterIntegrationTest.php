@@ -49,7 +49,7 @@ class ElasticSearchPersisterIntegrationTest extends TestCase
             'published' => 'Y',
         ];
 
-        $events[] = new AuditCreateEvent('1234', 50, 'articles', $data, $data);
+        $events[] = new AuditCreateEvent('1234', 50, 'articles', null, $data, null, 'testLogSingleCreateEvent');
         $persister->logEvents($events);
         $client->getIndex('article')->refresh();
 
@@ -108,7 +108,7 @@ class ElasticSearchPersisterIntegrationTest extends TestCase
             'published' => 'Y',
         ];
 
-        $events[] = new AuditUpdateEvent('1234', 50, 'articles', $changed, $original);
+        $events[] = new AuditUpdateEvent('1234', 50, 'articles', null, $changed, $original, 'testLogSingleUpdateEvent');
         $events[0]->setParentSourceName('authors');
         $persister->logEvents($events);
         $client->getIndex('article')->refresh();
@@ -149,7 +149,7 @@ class ElasticSearchPersisterIntegrationTest extends TestCase
         $client = ConnectionManager::get('test_elastic');
         $persister = new ElasticSearchPersister(['connection' => $client, 'index' => 'article', 'type' => 'article']);
 
-        $events[] = new AuditDeleteEvent('1234', 50, 'articles', 'authors');
+        $events[] = new AuditDeleteEvent('1234', 50, 'articles', null, null, null, 'testLogSingleDeleteEvent');
         $persister->logEvents($events);
         $client->getIndex('article')->refresh();
 
@@ -194,7 +194,7 @@ class ElasticSearchPersisterIntegrationTest extends TestCase
             'id' => 3,
             'tag' => 'cakephp',
         ];
-        $events[] = new AuditCreateEvent('1234', 4, 'tags', $data, $data);
+        $events[] = new AuditCreateEvent('1234', 4, 'tags', null, $data, null, 'testLogMultipleEvents');
 
         $original = [
             'title' => 'Old article title',
@@ -204,9 +204,9 @@ class ElasticSearchPersisterIntegrationTest extends TestCase
             'title' => 'A new article',
             'published' => 'Y',
         ];
-        $events[] = new AuditUpdateEvent('1234', 2, 'authors', $changed, $original);
-        $events[] = new AuditDeleteEvent('1234', 50, 'articles');
-        $events[] = new AuditDeleteEvent('1234', 51, 'articles');
+        $events[] = new AuditUpdateEvent('1234', 2, 'authors', null, $changed, $original, 'testLogMultipleEvents');
+        $events[] = new AuditDeleteEvent('1234', 50, 'articles', null, null, $original, 'testLogMultipleEvents');
+        $events[] = new AuditDeleteEvent('1234', 51, 'articles', null, null, $original, 'testLogMultipleEvents');
 
         $persister->logEvents($events);
         $client->getIndex('audit')->refresh();
@@ -243,7 +243,7 @@ class ElasticSearchPersisterIntegrationTest extends TestCase
             'published_date' => new DateTime('2015-04-13 20:20:21'),
         ];
 
-        $events[] = new AuditUpdateEvent('1234', 50, 'articles', $changed, $original);
+        $events[] = new AuditUpdateEvent('1234', 50, 'articles', null, $changed, $original, 'testPersistingTimeObjects');
         $persister->logEvents($events);
         $client->getIndex('article')->refresh();
 
@@ -289,7 +289,7 @@ class ElasticSearchPersisterIntegrationTest extends TestCase
         $client = ConnectionManager::get('test_elastic');
         $persister = new ElasticSearchPersister(['connection' => $client, 'index' => 'article', 'type' => 'article']);
 
-        $events[] = new AuditDeleteEvent('1234', 50, 'articles', 'authors');
+        $events[] = new AuditDeleteEvent('1234', 50, 'articles', null, null, null, 'testLogEventWithMetadata');
         $events[0]->setMetaInfo(['a' => 'b', 'c' => 'd']);
         $persister->logEvents($events);
         $client->getIndex('article')->refresh();
